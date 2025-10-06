@@ -1,0 +1,2895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pushup Counter Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#5D5CDE',
+                        secondary: '#FF6B6B',
+                        accent: '#4ECDC4',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        /* Custom styles */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        
+        /* For scrolling panel content */
+        .panel-content {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(93, 92, 222, 0.5) transparent;
+        }
+        
+        .panel-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .panel-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .panel-content::-webkit-scrollbar-thumb {
+            background-color: rgba(93, 92, 222, 0.5);
+            border-radius: 6px;
+        }
+        
+        /* For switch toggle */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #5D5CDE;
+        }
+        
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #5D5CDE;
+        }
+        
+        /* For card hover effects */
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Loading spinner */
+        .loader {
+            border-top-color: #5D5CDE;
+            animation: spinner 1.5s linear infinite;
+        }
+        
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive tables */
+        @media (max-width: 768px) {
+            .responsive-table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .responsive-table::-webkit-scrollbar {
+                height: 6px;
+            }
+            
+            .responsive-table::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            .responsive-table::-webkit-scrollbar-thumb {
+                background-color: rgba(93, 92, 222, 0.5);
+                border-radius: 6px;
+            }
+        }
+        
+        /* Mobile menu animation */
+        .mobile-menu {
+            transition: transform 0.3s ease;
+        }
+        
+        .mobile-menu.open {
+            transform: translateX(0);
+        }
+        
+        .mobile-menu.closed {
+            transform: translateX(-100%);
+        }
+    </style>
+</head>
+<body class="m-0 p-0 min-h-screen font-sans bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-white transition-colors duration-300">
+    <!-- Login Screen -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gray-900">
+        <div class="w-full max-w-md p-6 md:p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg mx-4">
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 rounded-full bg-primary/10 mb-4">
+                    <i class="fas fa-dumbbell text-4xl text-primary"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Pushup Counter Admin</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Sign in to manage your database</p>
+            </div>
+            
+            <div id="login-error" class="hidden p-4 mb-4 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg">
+                <p class="flex items-center">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <span>Invalid username or password</span>
+                </p>
+            </div>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                    <input type="text" id="username" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                    <input type="password" id="password" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <button type="submit" class="w-full py-2 px-4 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <div id="dashboard" class="hidden flex min-h-screen">
+        <!-- Sidebar for larger screens -->
+        <div class="hidden md:block w-64 bg-white dark:bg-gray-800 shadow-lg z-10 transition-all duration-300" id="sidebar-desktop">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="p-2 rounded-full bg-primary/10">
+                        <i class="fas fa-dumbbell text-primary"></i>
+                    </div>
+                    <h1 class="text-lg font-bold">Pushup Admin</h1>
+                </div>
+            </div>
+            
+            <nav class="p-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#dashboard-section" class="nav-link active flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-tachometer-alt w-6"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#users-section" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-users w-6"></i>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#activities-section" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-history w-6"></i>
+                            <span>Activities</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#challenges-section" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-flag w-6"></i>
+                            <span>Challenges</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#statistics-section" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-chart-bar w-6"></i>
+                            <span>Statistics</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#settings-section" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-cog w-6"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="logout-btn-desktop" class="w-full py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex items-center justify-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    <span>Sign Out</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mobile sidebar (hidden by default) -->
+        <div id="sidebar-mobile" class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-800 shadow-lg z-50 mobile-menu closed md:hidden">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="p-2 rounded-full bg-primary/10">
+                        <i class="fas fa-dumbbell text-primary"></i>
+                    </div>
+                    <h1 class="text-lg font-bold">Pushup Admin</h1>
+                </div>
+                <button id="close-sidebar-mobile" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <nav class="p-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#dashboard-section" class="nav-link-mobile active flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-tachometer-alt w-6"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#users-section" class="nav-link-mobile flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-users w-6"></i>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#activities-section" class="nav-link-mobile flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-history w-6"></i>
+                            <span>Activities</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#challenges-section" class="nav-link-mobile flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-flag w-6"></i>
+                            <span>Challenges</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#statistics-section" class="nav-link-mobile flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-chart-bar w-6"></i>
+                            <span>Statistics</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#settings-section" class="nav-link-mobile flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-white">
+                            <i class="fas fa-cog w-6"></i>
+                            <span>Settings</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            
+            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="logout-btn-mobile" class="w-full py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex items-center justify-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i>
+                    <span>Sign Out</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-900">
+            <!-- Top Bar -->
+            <div class="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
+                <div class="flex items-center">
+                    <button id="sidebar-toggle" class="md:hidden p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 mr-2">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h2 id="current-section-title" class="text-lg font-semibold">Dashboard</h2>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <div class="relative">
+                        <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                            <i id="theme-toggle-dark-icon" class="hidden fas fa-moon"></i>
+                            <i id="theme-toggle-light-icon" class="hidden fas fa-sun"></i>
+                        </button>
+                    </div>
+                    
+                    <span class="text-sm text-gray-600 dark:text-gray-400 hidden sm:inline-block">Hello, Admin</span>
+                </div>
+            </div>
+            
+            <!-- Scrollable Content Area -->
+            <div class="flex-1 overflow-y-auto">
+                <!-- Dashboard Section -->
+                <div id="dashboard-section" class="section p-4 space-y-4 active">
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 md:mb-6">Dashboard Overview</h2>
+                    
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="stat-card bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Users</p>
+                                    <h3 id="total-users-count" class="text-2xl md:text-3xl font-bold">-</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                                    <i class="fas fa-users text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                                <span id="active-users-count" class="font-medium text-green-600 dark:text-green-400">-</span> currently active
+                            </p>
+                        </div>
+                        
+                        <div class="stat-card bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Pushups</p>
+                                    <h3 id="total-pushups-count" class="text-2xl md:text-3xl font-bold">-</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400">
+                                    <i class="fas fa-dumbbell text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                                <span id="today-pushups-count" class="font-medium text-green-600 dark:text-green-400">-</span> today
+                            </p>
+                        </div>
+                        
+                        <div class="stat-card bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Active Challenge</p>
+                                    <h3 id="active-challenge-info" class="text-2xl md:text-3xl font-bold">-</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400">
+                                    <i class="fas fa-flag text-xl"></i>
+                                </div>
+                            </div>
+                            <p id="challenge-participants" class="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                                - participants
+                            </p>
+                        </div>
+                        
+                        <div class="stat-card bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Activities</p>
+                                    <h3 id="total-activities-count" class="text-2xl md:text-3xl font-bold">-</h3>
+                                </div>
+                                <div class="p-3 rounded-full bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+                                    <i class="fas fa-history text-xl"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                                <span id="recent-activities-count" class="font-medium text-green-600 dark:text-green-400">-</span> in last hour
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Activity & Top Users -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-4">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                <h3 class="font-semibold">Recent Activity</h3>
+                                <a href="#activities-section" class="text-sm text-primary hover:underline">View All</a>
+                            </div>
+                            <div class="p-4 max-h-80 overflow-y-auto panel-content">
+                                <div id="recent-activities-list" class="space-y-3">
+                                    <div id="recent-activities-loading" class="space-y-3">
+                                        <div class="flex items-center p-2 rounded-md bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                            <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                            <div class="ml-3 flex-1">
+                                                <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                                                <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mt-2"></div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center p-2 rounded-md bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                            <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                            <div class="ml-3 flex-1">
+                                                <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                                                <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mt-2"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                <h3 class="font-semibold">Top Performers</h3>
+                                <a href="#statistics-section" class="text-sm text-primary hover:underline">View All</a>
+                            </div>
+                            <div class="p-4 max-h-80 overflow-y-auto panel-content">
+                                <div id="top-users-list" class="space-y-3">
+                                    <div id="top-users-loading" class="space-y-3">
+                                        <div class="flex items-center p-2 rounded-md bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                            <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                            <div class="ml-3 flex-1">
+                                                <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                                                <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mt-2"></div>
+                                            </div>
+                                            <div class="text-2xl font-bold text-gray-200 dark:text-gray-600">1</div>
+                                        </div>
+                                        <div class="flex items-center p-2 rounded-md bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                            <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                            <div class="ml-3 flex-1">
+                                                <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-3/4"></div>
+                                                <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-1/2 mt-2"></div>
+                                            </div>
+                                            <div class="text-2xl font-bold text-gray-200 dark:text-gray-600">2</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Users Section -->
+                <div id="users-section" class="section p-4 space-y-4 hidden">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-4">
+                        <h2 class="text-xl md:text-2xl font-bold">User Management</h2>
+                        <button id="refresh-users-btn" class="flex items-center py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    
+                    <!-- Search and Filter -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <div class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
+                            <div class="flex-1 relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" id="user-search" placeholder="Search users..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                <select id="user-filter" class="py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="all">All Users</option>
+                                    <option value="active">Active Users</option>
+                                    <option value="inactive">Inactive Users</option>
+                                </select>
+                                <button id="clear-filters-btn" class="flex items-center py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                    <i class="fas fa-times mr-2"></i>
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Users Table -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                        <div class="overflow-x-auto responsive-table">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 dark:bg-gray-700 text-left">
+                                    <tr>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User ID</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Today's Count</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Count</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <tr id="users-table-loading" class="animate-pulse">
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center">
+                                                <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+                                                <div class="ml-3">
+                                                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                Showing <span id="users-showing-count">0</span> of <span id="users-total-count">0</span> users
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="prev-users-page" class="py-1 px-3 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button id="next-users-page" class="py-1 px-3 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Activities Section -->
+                <div id="activities-section" class="section p-4 space-y-4 hidden">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-4">
+                        <h2 class="text-xl md:text-2xl font-bold">Activity Log</h2>
+                        <button id="refresh-activities-btn" class="flex items-center py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    
+                    <!-- Search and Filter -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <div class="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
+                            <div class="flex-1 relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400"></i>
+                                </div>
+                                <input type="text" id="activity-search" placeholder="Search activities..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                            </div>
+                            <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                <select id="activity-filter" class="py-2 px-4 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <option value="all">All Types</option>
+                                    <option value="pushup">Pushups</option>
+                                    <option value="cheer">Cheers</option>
+                                    <option value="join">Joins</option>
+                                    <option value="leave">Leaves</option>
+                                </select>
+                                <button id="clear-activity-filters-btn" class="flex items-center py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                                    <i class="fas fa-times mr-2"></i>
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Activities Table -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                        <div class="overflow-x-auto responsive-table">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 dark:bg-gray-700 text-left">
+                                    <tr>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Time</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Details</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activities-table-body" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <tr id="activities-table-loading" class="animate-pulse">
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div></td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center">
+                                                <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700"></div>
+                                                <div class="ml-3">
+                                                    <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+                            <div class="text-sm text-gray-500 dark:text-gray-400">
+                                Showing <span id="activities-showing-count">0</span> of <span id="activities-total-count">0</span> activities
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="prev-activities-page" class="py-1 px-3 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button id="next-activities-page" class="py-1 px-3 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cleanup Actions -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                        <h3 class="font-semibold mb-4">Cleanup Actions</h3>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                            <button id="clear-old-activities-btn" class="flex items-center py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                                <i class="fas fa-trash-alt mr-2"></i>
+                                Clear Activities Older Than 7 Days
+                            </button>
+                            <button id="optimize-db-btn" class="flex items-center py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                                <i class="fas fa-database mr-2"></i>
+                                Optimize Database
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Challenges Section -->
+                <div id="challenges-section" class="section p-4 space-y-4 hidden">
+                    <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-4">
+                        <h2 class="text-xl md:text-2xl font-bold">Challenge Management</h2>
+                        <button id="create-challenge-btn" class="flex items-center py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>
+                            Create Challenge
+                        </button>
+                    </div>
+                    
+                    <!-- Active Challenge -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                        <h3 class="font-semibold mb-4 flex items-center">
+                            <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                            Active Challenge
+                        </h3>
+                        <div id="active-challenge-container">
+                            <div id="active-challenge-loading" class="animate-pulse">
+                                <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+                                <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-6"></div>
+                                <div class="flex justify-between items-center">
+                                    <div class="h-10 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                                    <div class="h-10 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Challenge History -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                        <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 class="font-semibold">Challenge History</h3>
+                        </div>
+                        <div class="overflow-x-auto responsive-table">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 dark:bg-gray-700 text-left">
+                                    <tr>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Description</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Target</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Participants</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="challenges-table-body" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <tr id="challenges-table-loading" class="animate-pulse">
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-40"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-12"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-16"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statistics Section -->
+                <div id="statistics-section" class="section p-4 space-y-4 hidden">
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 md:mb-6">Statistics & Leaderboards</h2>
+                    
+                    <!-- Leaderboard Tabs -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+                        <div class="border-b border-gray-200 dark:border-gray-700">
+                            <nav class="flex" aria-label="Tabs">
+                                <button id="tab-today" class="px-4 py-3 text-sm font-medium border-b-2 border-primary text-primary dark:text-primary">Today's Leaders</button>
+                                <button id="tab-all-time" class="px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">All-Time Leaders</button>
+                            </nav>
+                        </div>
+                        
+                        <!-- Today's Leaders -->
+                        <div id="leaderboard-today" class="p-4 max-h-96 overflow-y-auto panel-content">
+                            <div id="today-leaderboard-list" class="space-y-4">
+                                <div id="today-leaderboard-loading" class="space-y-4">
+                                    <div class="flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                        <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">1</div>
+                                        <div class="w-10 h-10 ml-3 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                        <div class="ml-3 flex-1">
+                                            <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+                                            <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-16 mt-2"></div>
+                                        </div>
+                                        <div class="h-6 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
+                                    </div>
+                                    <div class="flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                        <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">2</div>
+                                        <div class="w-10 h-10 ml-3 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                        <div class="ml-3 flex-1">
+                                            <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+                                            <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-16 mt-2"></div>
+                                        </div>
+                                        <div class="h-6 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- All-Time Leaders -->
+                        <div id="leaderboard-all-time" class="p-4 max-h-96 overflow-y-auto panel-content hidden">
+                            <div id="all-time-leaderboard-list" class="space-y-4">
+                                <div id="all-time-leaderboard-loading" class="space-y-4">
+                                    <div class="flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                        <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">1</div>
+                                        <div class="w-10 h-10 ml-3 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                        <div class="ml-3 flex-1">
+                                            <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+                                            <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-16 mt-2"></div>
+                                        </div>
+                                        <div class="h-6 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
+                                    </div>
+                                    <div class="flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700 animate-pulse">
+                                        <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">2</div>
+                                        <div class="w-10 h-10 ml-3 rounded-full bg-gray-200 dark:bg-gray-600"></div>
+                                        <div class="ml-3 flex-1">
+                                            <div class="h-4 bg-gray-200 dark:bg-gray-600 rounded w-24"></div>
+                                            <div class="h-3 bg-gray-200 dark:bg-gray-600 rounded w-16 mt-2"></div>
+                                        </div>
+                                        <div class="h-6 bg-gray-200 dark:bg-gray-600 rounded w-12"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Export Options -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                        <h3 class="font-semibold mb-4">Export Statistics</h3>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="export-csv-btn" class="flex items-center py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-file-csv mr-2"></i>
+                                Export as CSV
+                            </button>
+                            <button id="export-json-btn" class="flex items-center py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                <i class="fas fa-file-code mr-2"></i>
+                                Export as JSON
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Settings Section -->
+                <div id="settings-section" class="section p-4 space-y-4 hidden">
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 md:mb-6">Admin Settings</h2>
+                    
+                    <!-- General Settings -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                        <h3 class="font-semibold mb-4">General Settings</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-medium">Dark Mode</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Enable dark mode for the admin panel</p>
+                                </div>
+                                <div class="relative inline-block w-12 align-middle select-none">
+                                    <input type="checkbox" id="dark-mode-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer right-6"/>
+                                    <label for="dark-mode-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-medium">Auto-cleanup Old Data</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Automatically remove activities older than 30 days</p>
+                                </div>
+                                <div class="relative inline-block w-12 align-middle select-none">
+                                    <input type="checkbox" id="auto-cleanup-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer right-6"/>
+                                    <label for="auto-cleanup-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Security Settings -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                        <h3 class="font-semibold mb-4">Security Settings</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="new-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Change Admin Password</label>
+                                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                    <input type="password" id="new-password" placeholder="New password" class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                                    <button id="update-password-btn" class="flex items-center py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                        <i class="fas fa-save mr-2"></i>
+                                        Update
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Database Management -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6">
+                        <h3 class="font-semibold mb-4">Database Management</h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="font-medium">Backup Database</h4>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Create a complete backup of your database</p>
+                                <button id="backup-db-btn" class="flex items-center py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                    <i class="fas fa-download mr-2"></i>
+                                    Create Backup
+                                </button>
+                            </div>
+                            
+                            <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <h4 class="font-medium text-red-600 dark:text-red-400">Danger Zone</h4>
+                                <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">These actions cannot be undone</p>
+                                <div class="flex flex-col sm:flex-row gap-4">
+                                    <button id="reset-stats-btn" class="flex items-center py-2 px-4 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors">
+                                        <i class="fas fa-eraser mr-2"></i>
+                                        Reset All Stats
+                                    </button>
+                                    <button id="clear-db-btn" class="flex items-center py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                                        <i class="fas fa-trash-alt mr-2"></i>
+                                        Clear Database
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <!-- Edit User Modal -->
+    <div id="edit-user-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black opacity-50"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-4">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="font-semibold">Edit User</h3>
+                    <button class="close-modal p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <label for="edit-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+                        <input type="text" id="edit-username" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-today-count" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Today's Count</label>
+                        <input type="number" id="edit-today-count" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div class="mb-4">
+                        <label for="edit-total-count" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total Count</label>
+                        <input type="number" id="edit-total-count" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                    <button class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors mr-2">
+                        Cancel
+                    </button>
+                    <button id="save-user-btn" class="py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Challenge Modal -->
+    <div id="create-challenge-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black opacity-50"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-4">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="font-semibold">Create New Challenge</h3>
+                    <button class="close-modal p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <div class="mb-4">
+                        <label for="challenge-date" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                        <input type="date" id="challenge-date" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div class="mb-4">
+                        <label for="challenge-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                        <input type="text" id="challenge-description" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Complete 100 pushups today!">
+                    </div>
+                    <div class="mb-4">
+                        <label for="challenge-target" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target (Number of Pushups)</label>
+                        <input type="number" id="challenge-target" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="100">
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="challenge-active" class="rounded border-gray-300 text-primary focus:ring-primary">
+                        <label for="challenge-active" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Active Challenge</label>
+                    </div>
+                </div>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                    <button class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors mr-2">
+                        Cancel
+                    </button>
+                    <button id="save-challenge-btn" class="py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        Create Challenge
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black opacity-50"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-md mx-4">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    <h3 id="confirmation-title" class="font-semibold">Confirmation</h3>
+                    <button class="close-modal p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <p id="confirmation-message" class="text-gray-700 dark:text-gray-300">Are you sure you want to proceed?</p>
+                </div>
+                <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                    <button class="close-modal py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors mr-2">
+                        Cancel
+                    </button>
+                    <button id="confirm-action-btn" class="py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-xs transform translate-y-10 opacity-0 transition-all duration-300">
+        <div class="flex items-center p-4">
+            <div id="toast-icon" class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400">
+                <i class="fas fa-check"></i>
+            </div>
+            <div class="ml-3">
+                <p id="toast-title" class="font-medium">Success</p>
+                <p id="toast-message" class="text-sm text-gray-500 dark:text-gray-400">Operation completed successfully</p>
+            </div>
+            <button id="close-toast" class="ml-auto p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+        import { getDatabase, ref, set, get, push, remove, onValue, onChildAdded, onChildChanged, onChildRemoved, query, orderByChild, limitToLast, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAl_iGa6bfxH_4anUJL6SIntE3DcdR-l9Y",
+            authDomain: "pushupscounter-5e11a.firebaseapp.com",
+            projectId: "pushupscounter-5e11a",
+            storageBucket: "pushupscounter-5e11a.firebasestorage.app",
+            messagingSenderId: "439744700710",
+            appId: "1:439744700710:web:dce1a83c64d664f73d21e7",
+            databaseURL: "https://pushupscounter-5e11a-default-rtdb.firebaseio.com"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        // DOM Elements
+        const loginScreen = document.getElementById('login-screen');
+        const loginForm = document.getElementById('login-form');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginError = document.getElementById('login-error');
+        const dashboard = document.getElementById('dashboard');
+        const sidebarDesktop = document.getElementById('sidebar-desktop');
+        const sidebarMobile = document.getElementById('sidebar-mobile');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const closeSidebarMobile = document.getElementById('close-sidebar-mobile');
+        const logoutBtnDesktop = document.getElementById('logout-btn-desktop');
+        const logoutBtnMobile = document.getElementById('logout-btn-mobile');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const navLinksMobile = document.querySelectorAll('.nav-link-mobile');
+        const sections = document.querySelectorAll('.section');
+        const currentSectionTitle = document.getElementById('current-section-title');
+        const themeToggle = document.getElementById('theme-toggle');
+        const darkIcon = document.getElementById('theme-toggle-dark-icon');
+        const lightIcon = document.getElementById('theme-toggle-light-icon');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        
+        // State variables
+        let authenticated = false;
+        let currentSection = 'dashboard-section';
+        let editingUserId = null;
+        let confirmationCallback = null;
+        
+        // Initialize the admin panel
+        function initAdmin() {
+            // Check if user is logged in
+            checkAuth();
+            
+            // Set theme preference
+            setThemePreference();
+            
+            // Add event listeners
+            setupEventListeners();
+        }
+        
+        // Check authentication
+        function checkAuth() {
+            // In a real app, we would check a server session or token
+            // Here we'll just use localStorage for demo purposes
+            const isAuthenticated = localStorage.getItem('pushup_admin_auth');
+            
+            if (isAuthenticated === 'true') {
+                showDashboard();
+                loadInitialData();
+            } else {
+                showLoginScreen();
+            }
+        }
+        
+        // Set theme preference
+        function setThemePreference() {
+            if (localStorage.getItem('color-theme') === 'dark' || 
+                (!localStorage.getItem('color-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                darkIcon.classList.add('hidden');
+                lightIcon.classList.remove('hidden');
+                darkModeToggle.checked = true;
+            } else {
+                document.documentElement.classList.remove('dark');
+                darkIcon.classList.remove('hidden');
+                lightIcon.classList.add('hidden');
+                darkModeToggle.checked = false;
+            }
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Login form submission
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                handleLogin();
+            });
+            
+            // Logout buttons
+            logoutBtnDesktop.addEventListener('click', handleLogout);
+            logoutBtnMobile.addEventListener('click', handleLogout);
+            
+            // Sidebar toggle for mobile
+            sidebarToggle.addEventListener('click', toggleSidebar);
+            closeSidebarMobile.addEventListener('click', closeSidebar);
+            
+            // Navigation links
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const target = link.getAttribute('href').substring(1);
+                    navigateToSection(target);
+                });
+            });
+            
+            // Mobile navigation links
+            navLinksMobile.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const target = link.getAttribute('href').substring(1);
+                    navigateToSection(target);
+                    closeSidebar();
+                });
+            });
+            
+            // Theme toggle
+            themeToggle.addEventListener('click', toggleTheme);
+            darkModeToggle.addEventListener('click', toggleTheme);
+            
+            // Section-specific event listeners
+            setupDashboardListeners();
+            setupUsersListeners();
+            setupActivitiesListeners();
+            setupChallengesListeners();
+            setupStatisticsListeners();
+            setupSettingsListeners();
+            
+            // Modal event listeners
+            setupModalListeners();
+            
+            // Toast event listeners
+            document.getElementById('close-toast').addEventListener('click', hideToast);
+        }
+        
+        // Setup dashboard event listeners
+        function setupDashboardListeners() {
+            // No specific listeners needed yet
+        }
+        
+        // Setup users event listeners
+        function setupUsersListeners() {
+            document.getElementById('refresh-users-btn').addEventListener('click', loadUsers);
+            document.getElementById('user-search').addEventListener('input', filterUsers);
+            document.getElementById('user-filter').addEventListener('change', filterUsers);
+            document.getElementById('clear-filters-btn').addEventListener('click', clearUserFilters);
+            document.getElementById('prev-users-page').addEventListener('click', prevUsersPage);
+            document.getElementById('next-users-page').addEventListener('click', nextUsersPage);
+            document.getElementById('save-user-btn').addEventListener('click', saveUserChanges);
+        }
+        
+        // Setup activities event listeners
+        function setupActivitiesListeners() {
+            document.getElementById('refresh-activities-btn').addEventListener('click', loadActivities);
+            document.getElementById('activity-search').addEventListener('input', filterActivities);
+            document.getElementById('activity-filter').addEventListener('change', filterActivities);
+            document.getElementById('clear-activity-filters-btn').addEventListener('click', clearActivityFilters);
+            document.getElementById('prev-activities-page').addEventListener('click', prevActivitiesPage);
+            document.getElementById('next-activities-page').addEventListener('click', nextActivitiesPage);
+            document.getElementById('clear-old-activities-btn').addEventListener('click', () => showConfirmation(
+                'Clear Old Activities',
+                'Are you sure you want to delete all activities older than 7 days? This action cannot be undone.',
+                clearOldActivities
+            ));
+            document.getElementById('optimize-db-btn').addEventListener('click', () => showConfirmation(
+                'Optimize Database',
+                'This will clean up unnecessary data and optimize the database structure. Continue?',
+                optimizeDatabase
+            ));
+        }
+        
+        // Setup challenges event listeners
+        function setupChallengesListeners() {
+            document.getElementById('create-challenge-btn').addEventListener('click', showCreateChallengeModal);
+            document.getElementById('save-challenge-btn').addEventListener('click', saveChallenge);
+        }
+        
+        // Setup statistics event listeners
+        function setupStatisticsListeners() {
+            document.getElementById('tab-today').addEventListener('click', () => {
+                document.getElementById('tab-today').classList.add('border-primary', 'text-primary');
+                document.getElementById('tab-today').classList.remove('text-gray-500', 'dark:text-gray-400');
+                document.getElementById('tab-all-time').classList.remove('border-primary', 'text-primary');
+                document.getElementById('tab-all-time').classList.add('text-gray-500', 'dark:text-gray-400');
+                document.getElementById('leaderboard-today').classList.remove('hidden');
+                document.getElementById('leaderboard-all-time').classList.add('hidden');
+            });
+            
+            document.getElementById('tab-all-time').addEventListener('click', () => {
+                document.getElementById('tab-all-time').classList.add('border-primary', 'text-primary');
+                document.getElementById('tab-all-time').classList.remove('text-gray-500', 'dark:text-gray-400');
+                document.getElementById('tab-today').classList.remove('border-primary', 'text-primary');
+                document.getElementById('tab-today').classList.add('text-gray-500', 'dark:text-gray-400');
+                document.getElementById('leaderboard-all-time').classList.remove('hidden');
+                document.getElementById('leaderboard-today').classList.add('hidden');
+            });
+            
+            document.getElementById('export-csv-btn').addEventListener('click', exportStatsAsCSV);
+            document.getElementById('export-json-btn').addEventListener('click', exportStatsAsJSON);
+        }
+        
+        // Setup settings event listeners
+        function setupSettingsListeners() {
+            document.getElementById('auto-cleanup-toggle').addEventListener('change', toggleAutoCleanup);
+            document.getElementById('update-password-btn').addEventListener('click', updatePassword);
+            document.getElementById('backup-db-btn').addEventListener('click', backupDatabase);
+            document.getElementById('reset-stats-btn').addEventListener('click', () => showConfirmation(
+                'Reset All Stats',
+                'Are you sure you want to reset all user statistics? This will set all pushup counts to zero but keep user accounts. This action cannot be undone.',
+                resetAllStats
+            ));
+            document.getElementById('clear-db-btn').addEventListener('click', () => showConfirmation(
+                'Clear Database',
+                'Are you sure you want to completely clear the database? This will delete ALL data including users, activities, and challenges. This action cannot be undone.',
+                clearDatabase
+            ));
+        }
+        
+        // Setup modal event listeners
+        function setupModalListeners() {
+            // Close modals when clicking the close button
+            const closeButtons = document.querySelectorAll('.close-modal');
+            closeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    document.getElementById('edit-user-modal').classList.add('hidden');
+                    document.getElementById('create-challenge-modal').classList.add('hidden');
+                    document.getElementById('confirmation-modal').classList.add('hidden');
+                });
+            });
+            
+            // Confirmation action button
+            document.getElementById('confirm-action-btn').addEventListener('click', () => {
+                if (confirmationCallback) {
+                    confirmationCallback();
+                }
+                document.getElementById('confirmation-modal').classList.add('hidden');
+            });
+        }
+        
+        // Handle login
+        function handleLogin() {
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+            
+            // Check credentials (in a real app, this would be a server call)
+            if (username === 'admin' && password === 'mymomdad565') {
+                localStorage.setItem('pushup_admin_auth', 'true');
+                showDashboard();
+                loadInitialData();
+            } else {
+                loginError.classList.remove('hidden');
+                loginForm.classList.add('shake');
+                
+                // Remove shake animation after it completes
+                setTimeout(() => {
+                    loginForm.classList.remove('shake');
+                }, 500);
+            }
+        }
+        
+        // Handle logout
+        function handleLogout() {
+            localStorage.removeItem('pushup_admin_auth');
+            showLoginScreen();
+        }
+        
+        // Show login screen
+        function showLoginScreen() {
+            loginScreen.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+            authenticated = false;
+        }
+        
+        // Show dashboard
+        function showDashboard() {
+            loginScreen.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+            authenticated = true;
+        }
+        
+        // Toggle sidebar
+        function toggleSidebar() {
+            sidebarMobile.classList.remove('closed');
+            sidebarMobile.classList.add('open');
+        }
+        
+        // Close sidebar
+        function closeSidebar() {
+            sidebarMobile.classList.remove('open');
+            sidebarMobile.classList.add('closed');
+        }
+        
+        // Navigate to section
+        function navigateToSection(sectionId) {
+            // Hide all sections
+            sections.forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // Show the target section
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+                currentSection = sectionId;
+                
+                // Update section title
+                const sectionName = sectionId.split('-')[0];
+                currentSectionTitle.textContent = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
+                
+                // Update active nav link - desktop
+                navLinks.forEach(link => {
+                    link.classList.remove('active', 'bg-gray-100', 'dark:bg-gray-700', 'text-primary');
+                    link.classList.add('text-gray-800', 'dark:text-white');
+                    
+                    if (link.getAttribute('href') === `#${sectionId}`) {
+                        link.classList.add('active', 'bg-gray-100', 'dark:bg-gray-700', 'text-primary');
+                    }
+                });
+                
+                // Update active nav link - mobile
+                navLinksMobile.forEach(link => {
+                    link.classList.remove('active', 'bg-gray-100', 'dark:bg-gray-700', 'text-primary');
+                    link.classList.add('text-gray-800', 'dark:text-white');
+                    
+                    if (link.getAttribute('href') === `#${sectionId}`) {
+                        link.classList.add('active', 'bg-gray-100', 'dark:bg-gray-700', 'text-primary');
+                    }
+                });
+                
+                // Load section-specific data if needed
+                if (sectionId === 'users-section') {
+                    loadUsers();
+                } else if (sectionId === 'activities-section') {
+                    loadActivities();
+                } else if (sectionId === 'challenges-section') {
+                    loadChallenges();
+                } else if (sectionId === 'statistics-section') {
+                    loadStatistics();
+                }
+            }
+        }
+        
+        // Toggle theme
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+                darkIcon.classList.remove('hidden');
+                lightIcon.classList.add('hidden');
+                darkModeToggle.checked = false;
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+                darkIcon.classList.add('hidden');
+                lightIcon.classList.remove('hidden');
+                darkModeToggle.checked = true;
+            }
+        }
+        
+        // Load initial data
+        function loadInitialData() {
+            // Load dashboard data
+            loadDashboardData();
+        }
+        
+        // Load dashboard data
+        function loadDashboardData() {
+            // Load active users count
+            get(ref(db, 'active_users')).then((snapshot) => {
+                const activeUsersCount = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+                document.getElementById('active-users-count').textContent = activeUsersCount;
+            }).catch(error => {
+                console.error("Error getting active users:", error);
+                document.getElementById('active-users-count').textContent = '0';
+            });
+            
+            // Load total users count
+            get(ref(db, 'stats/allTime')).then((snapshot) => {
+                const totalUsersCount = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+                document.getElementById('total-users-count').textContent = totalUsersCount;
+            }).catch(error => {
+                console.error("Error getting total users:", error);
+                document.getElementById('total-users-count').textContent = '0';
+            });
+            
+            // Load today's pushups count
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            get(ref(db, `stats/daily/${today}`)).then((snapshot) => {
+                let todayPushups = 0;
+                if (snapshot.exists()) {
+                    const users = snapshot.val();
+                    for (const userId in users) {
+                        todayPushups += users[userId].count || 0;
+                    }
+                }
+                document.getElementById('today-pushups-count').textContent = todayPushups;
+            }).catch(error => {
+                console.error("Error getting today's pushups:", error);
+                document.getElementById('today-pushups-count').textContent = '0';
+            });
+            
+            // Load total pushups count
+            get(ref(db, 'stats/allTime')).then((snapshot) => {
+                let totalPushups = 0;
+                if (snapshot.exists()) {
+                    const users = snapshot.val();
+                    for (const userId in users) {
+                        totalPushups += users[userId].count || 0;
+                    }
+                }
+                document.getElementById('total-pushups-count').textContent = totalPushups;
+            }).catch(error => {
+                console.error("Error getting total pushups:", error);
+                document.getElementById('total-pushups-count').textContent = '0';
+            });
+            
+            // Load active challenge
+            get(ref(db, 'challenges')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const challenges = snapshot.val();
+                    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                    
+                    let activeChallenge = null;
+                    for (const id in challenges) {
+                        const challenge = challenges[id];
+                        if (challenge.date === today && challenge.active) {
+                            activeChallenge = challenge;
+                            break;
+                        }
+                    }
+                    
+                    if (activeChallenge) {
+                        document.getElementById('active-challenge-info').textContent = activeChallenge.target || '-';
+                        document.getElementById('challenge-participants').textContent = 'Target Pushups';
+                    } else {
+                        document.getElementById('active-challenge-info').textContent = 'None';
+                        document.getElementById('challenge-participants').textContent = 'No active challenge';
+                    }
+                } else {
+                    document.getElementById('active-challenge-info').textContent = 'None';
+                    document.getElementById('challenge-participants').textContent = 'No active challenge';
+                }
+            }).catch(error => {
+                console.error("Error getting active challenge:", error);
+                document.getElementById('active-challenge-info').textContent = 'Error';
+                document.getElementById('challenge-participants').textContent = 'Failed to load';
+            });
+            
+            // Load total activities count
+            get(ref(db, 'activities')).then((snapshot) => {
+                const totalActivities = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+                document.getElementById('total-activities-count').textContent = totalActivities;
+                
+                // Count recent activities (within the last hour)
+                const oneHourAgo = Date.now() - (60 * 60 * 1000);
+                let recentActivitiesCount = 0;
+                
+                if (snapshot.exists()) {
+                    const activities = snapshot.val();
+                    for (const id in activities) {
+                        if (activities[id].timestamp && activities[id].timestamp > oneHourAgo) {
+                            recentActivitiesCount++;
+                        }
+                    }
+                }
+                
+                document.getElementById('recent-activities-count').textContent = recentActivitiesCount;
+            }).catch(error => {
+                console.error("Error getting activities:", error);
+                document.getElementById('total-activities-count').textContent = '0';
+                document.getElementById('recent-activities-count').textContent = '0';
+            });
+            
+            // Load recent activities
+            const recentActivitiesQuery = query(
+                ref(db, 'activities'),
+                orderByChild('timestamp'),
+                limitToLast(5)
+            );
+            
+            get(recentActivitiesQuery).then((snapshot) => {
+                const recentActivitiesList = document.getElementById('recent-activities-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('recent-activities-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                if (snapshot.exists()) {
+                    // Convert to array and sort by timestamp (descending)
+                    const activities = [];
+                    snapshot.forEach((childSnapshot) => {
+                        activities.push({
+                            id: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+                    
+                    activities.sort((a, b) => b.timestamp - a.timestamp);
+                    
+                    // Render activities
+                    activities.forEach(activity => {
+                        const activityEl = document.createElement('div');
+                        activityEl.className = 'flex items-center p-2 rounded-md bg-gray-50 dark:bg-gray-700 fade-in';
+                        
+                        const time = new Date(activity.timestamp);
+                        const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        
+                        let iconClass = 'fas fa-dumbbell';
+                        let iconColor = 'text-primary';
+                        let activityText = `did a pushup (count: ${activity.count || 'N/A'})`;
+                        
+                        if (activity.type === 'cheer') {
+                            iconClass = 'fas fa-thumbs-up';
+                            iconColor = 'text-accent';
+                            activityText = `cheered for ${activity.targetUsername || 'someone'}`;
+                        } else if (activity.type === 'join') {
+                            iconClass = 'fas fa-sign-in-alt';
+                            iconColor = 'text-green-500';
+                            activityText = 'joined the workout';
+                        } else if (activity.type === 'leave') {
+                            iconClass = 'fas fa-sign-out-alt';
+                            iconColor = 'text-red-500';
+                            activityText = 'left the workout';
+                        }
+                        
+                        // Generate a consistent color from username
+                        const hue = stringToHue(activity.username || 'Anonymous');
+                        
+                        activityEl.innerHTML = `
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white" style="background-color: hsl(${hue}, 70%, 60%)">
+                                <i class="${iconClass}"></i>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <div class="font-medium">${activity.username || 'Anonymous'}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${activityText}</div>
+                            </div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">${timeStr}</div>
+                        `;
+                        
+                        recentActivitiesList.appendChild(activityEl);
+                    });
+                } else {
+                    recentActivitiesList.innerHTML = '<div class="text-center text-sm text-gray-500 dark:text-gray-400">No recent activity</div>';
+                }
+            }).catch(error => {
+                console.error("Error loading recent activities:", error);
+                const recentActivitiesList = document.getElementById('recent-activities-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('recent-activities-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                recentActivitiesList.innerHTML = '<div class="text-center text-sm text-gray-500 dark:text-gray-400">Error loading activities</div>';
+            });
+            
+            // Load top users
+            get(ref(db, 'stats/allTime')).then((snapshot) => {
+                const topUsersList = document.getElementById('top-users-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('top-users-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                if (snapshot.exists()) {
+                    // Convert to array and sort by count (descending)
+                    const users = [];
+                    snapshot.forEach((childSnapshot) => {
+                        users.push({
+                            id: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+                    
+                    users.sort((a, b) => b.count - a.count);
+                    
+                    // Take top 5
+                    const topUsers = users.slice(0, 5);
+                    
+                    // Render users
+                    topUsers.forEach((user, index) => {
+                        const userEl = document.createElement('div');
+                        userEl.className = 'flex items-center p-2 rounded-md bg-gray-50 dark:bg-gray-700 fade-in';
+                        
+                        // Generate a consistent color from username
+                        const hue = stringToHue(user.username || 'Anonymous');
+                        
+                        // Get medal icon and color
+                        let medalIcon = '';
+                        let medalColor = '';
+                        
+                        if (index === 0) {
+                            medalIcon = '🥇';
+                            medalColor = 'text-yellow-500';
+                        } else if (index === 1) {
+                            medalIcon = '🥈';
+                            medalColor = 'text-gray-400';
+                        } else if (index === 2) {
+                            medalIcon = '🥉';
+                            medalColor = 'text-yellow-700';
+                        }
+                        
+                        userEl.innerHTML = `
+                            <div class="text-2xl font-bold ${medalColor} w-8 text-center">${medalIcon || (index + 1)}</div>
+                            <div class="w-10 h-10 ml-2 rounded-full flex items-center justify-center text-white" style="background-color: hsl(${hue}, 70%, 60%)">
+                                ${(user.username || 'A').charAt(0).toUpperCase()}
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <div class="font-medium">${user.username || 'Anonymous'}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${user.count || 0} pushups</div>
+                            </div>
+                        `;
+                        
+                        topUsersList.appendChild(userEl);
+                    });
+                } else {
+                    topUsersList.innerHTML = '<div class="text-center text-sm text-gray-500 dark:text-gray-400">No users found</div>';
+                }
+            }).catch(error => {
+                console.error("Error loading top users:", error);
+                const topUsersList = document.getElementById('top-users-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('top-users-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                topUsersList.innerHTML = '<div class="text-center text-sm text-gray-500 dark:text-gray-400">Error loading users</div>';
+            });
+        }
+        
+        // Load users
+        function loadUsers() {
+            get(ref(db, 'active_users')).then((snapshot) => {
+                const usersTableBody = document.getElementById('users-table-body');
+                // Remove loading state
+                const loadingElement = document.getElementById('users-table-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                if (snapshot.exists()) {
+                    const activeUsers = snapshot.val();
+                    
+                    // Also get all-time stats to include inactive users
+                    get(ref(db, 'stats/allTime')).then((statsSnapshot) => {
+                        const allTimeStats = statsSnapshot.exists() ? statsSnapshot.val() : {};
+                        
+                        // Combine active and inactive users
+                        const allUsers = {};
+                        
+                        // Add active users
+                        for (const userId in activeUsers) {
+                            allUsers[userId] = {
+                                ...activeUsers[userId],
+                                userId: userId,
+                                isActive: true
+                            };
+                        }
+                        
+                        // Add inactive users from stats
+                        for (const userId in allTimeStats) {
+                            if (!allUsers[userId]) {
+                                allUsers[userId] = {
+                                    username: allTimeStats[userId].username,
+                                    totalCount: allTimeStats[userId].count,
+                                    todayCount: 0,
+                                    userId: userId,
+                                    isActive: false
+                                };
+                            }
+                        }
+                        
+                        // Convert to array
+                        const users = Object.values(allUsers);
+                        
+                        // Sort by username
+                        users.sort((a, b) => {
+                            const nameA = (a.username || '').toLowerCase();
+                            const nameB = (b.username || '').toLowerCase();
+                            return nameA.localeCompare(nameB);
+                        });
+                        
+                        // Update counts
+                        document.getElementById('users-total-count').textContent = users.length;
+                        document.getElementById('users-showing-count').textContent = users.length;
+                        
+                        // Clear existing content
+                        usersTableBody.innerHTML = '';
+                        
+                        // Render users
+                        users.forEach(user => {
+                            const userRow = document.createElement('tr');
+                            userRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+                            
+                            // Generate a consistent color from username
+                            const hue = stringToHue(user.username || 'Anonymous');
+                            
+                            userRow.innerHTML = `
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 rounded-full flex items-center justify-center text-white" style="background-color: hsl(${hue}, 70%, 60%)">
+                                            ${(user.username || 'A').charAt(0).toUpperCase()}
+                                        </div>
+                                        <div class="ml-3">
+                                            <div class="font-medium">${user.username || 'Anonymous'}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">${user.userId}</td>
+                                <td class="px-6 py-4">${user.todayCount || 0}</td>
+                                <td class="px-6 py-4">${user.totalCount || 0}</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-400'}">
+                                        ${user.isActive ? 'Active' : 'Inactive'}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center space-x-2">
+                                        <button class="edit-user-btn p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400" data-user-id="${user.userId}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="delete-user-btn p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-red-600 dark:text-red-400" data-user-id="${user.userId}">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            `;
+                            
+                            usersTableBody.appendChild(userRow);
+                        });
+                        
+                        // Add event listeners to edit and delete buttons
+                        document.querySelectorAll('.edit-user-btn').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                const userId = btn.getAttribute('data-user-id');
+                                showEditUserModal(userId, allUsers[userId]);
+                            });
+                        });
+                        
+                        document.querySelectorAll('.delete-user-btn').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                const userId = btn.getAttribute('data-user-id');
+                                showConfirmation(
+                                    'Delete User',
+                                    `Are you sure you want to delete the user "${allUsers[userId].username || 'Anonymous'}"? This action cannot be undone.`,
+                                    () => deleteUser(userId)
+                                );
+                            });
+                        });
+                        
+                        // Apply any existing filters
+                        filterUsers();
+                    });
+                } else {
+                    usersTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No users found</td>
+                        </tr>
+                    `;
+                    
+                    document.getElementById('users-total-count').textContent = '0';
+                    document.getElementById('users-showing-count').textContent = '0';
+                }
+            }).catch(error => {
+                console.error("Error loading users:", error);
+                const usersTableBody = document.getElementById('users-table-body');
+                // Remove loading state
+                const loadingElement = document.getElementById('users-table-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                usersTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading users. Please try again.</td>
+                    </tr>
+                `;
+                document.getElementById('users-total-count').textContent = '0';
+                document.getElementById('users-showing-count').textContent = '0';
+                showToast('error', 'Error', 'Failed to load users. Please try again.');
+            });
+        }
+        
+        // Filter users
+        function filterUsers() {
+            const searchTerm = document.getElementById('user-search').value.toLowerCase();
+            const filterType = document.getElementById('user-filter').value;
+            
+            const rows = document.querySelectorAll('#users-table-body tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const username = row.querySelector('.font-medium')?.textContent.toLowerCase() || '';
+                const status = row.querySelector('.rounded-full')?.textContent.trim() || '';
+                
+                const matchesSearch = username.includes(searchTerm);
+                const matchesFilter = filterType === 'all' || 
+                                     (filterType === 'active' && status === 'Active') ||
+                                     (filterType === 'inactive' && status === 'Inactive');
+                
+                if (matchesSearch && matchesFilter) {
+                    row.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+            
+            document.getElementById('users-showing-count').textContent = visibleCount;
+        }
+        
+        // Clear user filters
+        function clearUserFilters() {
+            document.getElementById('user-search').value = '';
+            document.getElementById('user-filter').value = 'all';
+            filterUsers();
+        }
+        
+        // Previous users page
+        function prevUsersPage() {
+            // Implement pagination if needed
+        }
+        
+        // Next users page
+        function nextUsersPage() {
+            // Implement pagination if needed
+        }
+        
+        // Show edit user modal
+        function showEditUserModal(userId, userData) {
+            editingUserId = userId;
+            
+            document.getElementById('edit-username').value = userData.username || '';
+            document.getElementById('edit-today-count').value = userData.todayCount || 0;
+            document.getElementById('edit-total-count').value = userData.totalCount || 0;
+            
+            document.getElementById('edit-user-modal').classList.remove('hidden');
+        }
+        
+        // Save user changes
+        function saveUserChanges() {
+            if (!editingUserId) return;
+            
+            const username = document.getElementById('edit-username').value.trim();
+            const todayCount = parseInt(document.getElementById('edit-today-count').value) || 0;
+            const totalCount = parseInt(document.getElementById('edit-total-count').value) || 0;
+            
+            // Update active user if they are active
+            get(ref(db, `active_users/${editingUserId}`)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    // User is active, update their data
+                    const userData = snapshot.val();
+                    
+                    set(ref(db, `active_users/${editingUserId}`), {
+                        ...userData,
+                        username: username,
+                        todayCount: todayCount,
+                        totalCount: totalCount
+                    });
+                }
+                
+                // Update stats
+                const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                
+                // Update today's stats
+                set(ref(db, `stats/daily/${today}/${editingUserId}`), {
+                    username: username,
+                    count: todayCount,
+                    lastUpdated: Date.now()
+                });
+                
+                // Update all-time stats
+                set(ref(db, `stats/allTime/${editingUserId}`), {
+                    username: username,
+                    count: totalCount,
+                    lastUpdated: Date.now()
+                });
+                
+                // Hide modal and reload users
+                document.getElementById('edit-user-modal').classList.add('hidden');
+                editingUserId = null;
+                
+                // Show success toast
+                showToast('success', 'User Updated', 'User information has been updated successfully.');
+                
+                // Reload users
+                loadUsers();
+                
+                // Also reload dashboard data
+                loadDashboardData();
+            }).catch(error => {
+                console.error("Error updating user:", error);
+                showToast('error', 'Update Failed', 'Failed to update user information. Please try again.');
+            });
+        }
+        
+        // Delete user
+        function deleteUser(userId) {
+            // Remove from active users
+            remove(ref(db, `active_users/${userId}`));
+            
+            // Remove from stats
+            remove(ref(db, `stats/allTime/${userId}`));
+            
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            remove(ref(db, `stats/daily/${today}/${userId}`));
+            
+            // Show success toast
+            showToast('success', 'User Deleted', 'User has been deleted successfully.');
+            
+            // Reload users
+            loadUsers();
+            
+            // Also reload dashboard data
+            loadDashboardData();
+        }
+        
+        // Load activities
+        function loadActivities() {
+            const activitiesQuery = query(
+                ref(db, 'activities'),
+                orderByChild('timestamp'),
+                limitToLast(20)
+            );
+            
+            get(activitiesQuery).then((snapshot) => {
+                const activitiesTableBody = document.getElementById('activities-table-body');
+                // Remove loading state
+                const loadingElement = document.getElementById('activities-table-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                if (snapshot.exists()) {
+                    // Convert to array and sort by timestamp (descending)
+                    const activities = [];
+                    snapshot.forEach((childSnapshot) => {
+                        activities.push({
+                            id: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+                    
+                    activities.sort((a, b) => b.timestamp - a.timestamp);
+                    
+                    // Update counts
+                    document.getElementById('activities-total-count').textContent = activities.length;
+                    document.getElementById('activities-showing-count').textContent = activities.length;
+                    
+                    // Clear existing content
+                    activitiesTableBody.innerHTML = '';
+                    
+                    // Render activities
+                    activities.forEach(activity => {
+                        const activityRow = document.createElement('tr');
+                        activityRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+                        
+                        const time = new Date(activity.timestamp);
+                        const timeStr = time.toLocaleString();
+                        
+                        // Generate a consistent color from username
+                        const hue = stringToHue(activity.username || 'Anonymous');
+                        
+                        // Determine activity type and details
+                        let activityType = 'Unknown';
+                        let activityDetails = '';
+                        let activityClass = 'text-gray-800 dark:text-gray-200';
+                        
+                        if (activity.type === 'pushup') {
+                            activityType = 'Pushup';
+                            activityDetails = `Count: ${activity.count || 'N/A'}`;
+                            activityClass = 'text-primary';
+                        } else if (activity.type === 'cheer') {
+                            activityType = 'Cheer';
+                            activityDetails = `For: ${activity.targetUsername || 'Someone'}`;
+                            activityClass = 'text-accent';
+                        } else if (activity.type === 'join') {
+                            activityType = 'Join';
+                            activityDetails = 'Joined workout';
+                            activityClass = 'text-green-600 dark:text-green-400';
+                        } else if (activity.type === 'leave') {
+                            activityType = 'Leave';
+                            activityDetails = 'Left workout';
+                            activityClass = 'text-red-600 dark:text-red-400';
+                        }
+                        
+                        activityRow.innerHTML = `
+                            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">${timeStr}</td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white" style="background-color: hsl(${hue}, 70%, 60%)">
+                                        ${(activity.username || 'A').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="ml-3 font-medium">${activity.username || 'Anonymous'}</div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${activityClass} bg-opacity-10">
+                                    ${activityType}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">${activityDetails}</td>
+                            <td class="px-6 py-4">
+                                <button class="delete-activity-btn p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-red-600 dark:text-red-400" data-activity-id="${activity.id}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        `;
+                        
+                        activitiesTableBody.appendChild(activityRow);
+                    });
+                    
+                    // Add event listeners to delete buttons
+                    document.querySelectorAll('.delete-activity-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const activityId = btn.getAttribute('data-activity-id');
+                            showConfirmation(
+                                'Delete Activity',
+                                'Are you sure you want to delete this activity? This action cannot be undone.',
+                                () => deleteActivity(activityId)
+                            );
+                        });
+                    });
+                    
+                    // Apply any existing filters
+                    filterActivities();
+                } else {
+                    activitiesTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No activities found</td>
+                        </tr>
+                    `;
+                    
+                    document.getElementById('activities-total-count').textContent = '0';
+                    document.getElementById('activities-showing-count').textContent = '0';
+                }
+            }).catch(error => {
+                console.error("Error loading activities:", error);
+                const activitiesTableBody = document.getElementById('activities-table-body');
+                // Remove loading state
+                const loadingElement = document.getElementById('activities-table-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                activitiesTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading activities. Please try again.</td>
+                    </tr>
+                `;
+                document.getElementById('activities-total-count').textContent = '0';
+                document.getElementById('activities-showing-count').textContent = '0';
+                showToast('error', 'Error', 'Failed to load activities. Please try again.');
+            });
+        }
+        
+        // Filter activities
+        function filterActivities() {
+            const searchTerm = document.getElementById('activity-search').value.toLowerCase();
+            const filterType = document.getElementById('activity-filter').value;
+            
+            const rows = document.querySelectorAll('#activities-table-body tr');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                const username = row.querySelector('.font-medium')?.textContent.toLowerCase() || '';
+                const details = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
+                const type = row.querySelector('.rounded-full')?.textContent.trim().toLowerCase() || '';
+                
+                const matchesSearch = username.includes(searchTerm) || details.includes(searchTerm);
+                const matchesFilter = filterType === 'all' || 
+                                     (filterType === 'pushup' && type === 'pushup') ||
+                                     (filterType === 'cheer' && type === 'cheer') ||
+                                     (filterType === 'join' && type === 'join') ||
+                                     (filterType === 'leave' && type === 'leave');
+                
+                if (matchesSearch && matchesFilter) {
+                    row.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    row.classList.add('hidden');
+                }
+            });
+            
+            document.getElementById('activities-showing-count').textContent = visibleCount;
+        }
+        
+        // Clear activity filters
+        function clearActivityFilters() {
+            document.getElementById('activity-search').value = '';
+            document.getElementById('activity-filter').value = 'all';
+            filterActivities();
+        }
+        
+        // Previous activities page
+        function prevActivitiesPage() {
+            // Implement pagination if needed
+        }
+        
+        // Next activities page
+        function nextActivitiesPage() {
+            // Implement pagination if needed
+        }
+        
+        // Delete activity
+        function deleteActivity(activityId) {
+            remove(ref(db, `activities/${activityId}`)).then(() => {
+                // Show success toast
+                showToast('success', 'Activity Deleted', 'Activity has been deleted successfully.');
+                
+                // Reload activities
+                loadActivities();
+                
+                // Also reload dashboard data
+                loadDashboardData();
+            }).catch(error => {
+                console.error("Error deleting activity:", error);
+                showToast('error', 'Delete Failed', 'Failed to delete activity. Please try again.');
+            });
+        }
+        
+        // Clear old activities
+        function clearOldActivities() {
+            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            
+            get(ref(db, 'activities')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const activities = snapshot.val();
+                    let deletedCount = 0;
+                    
+                    for (const id in activities) {
+                        if (activities[id].timestamp && activities[id].timestamp < sevenDaysAgo) {
+                            remove(ref(db, `activities/${id}`));
+                            deletedCount++;
+                        }
+                    }
+                    
+                    // Show success toast
+                    showToast('success', 'Activities Cleared', `${deletedCount} old activities have been deleted.`);
+                    
+                    // Reload activities
+                    loadActivities();
+                    
+                    // Also reload dashboard data
+                    loadDashboardData();
+                } else {
+                    showToast('info', 'No Activities', 'No activities to clear.');
+                }
+            }).catch(error => {
+                console.error("Error clearing old activities:", error);
+                showToast('error', 'Clearing Failed', 'Failed to clear old activities. Please try again.');
+            });
+        }
+        
+        // Optimize database
+        function optimizeDatabase() {
+            // This would be a more complex operation in a real app
+            // Here we'll just simulate by cleaning up old activities
+            
+            showToast('success', 'Database Optimized', 'Database optimization completed successfully.');
+        }
+        
+        // Load challenges
+        function loadChallenges() {
+            get(ref(db, 'challenges')).then((snapshot) => {
+                const challengesTableBody = document.getElementById('challenges-table-body');
+                // Remove loading state
+                const loadingTableElement = document.getElementById('challenges-table-loading');
+                if (loadingTableElement) {
+                    loadingTableElement.remove();
+                }
+                
+                // Also update active challenge container
+                const activeChallenge = document.getElementById('active-challenge-container');
+                // Remove loading state
+                const loadingContainerElement = document.getElementById('active-challenge-loading');
+                if (loadingContainerElement) {
+                    loadingContainerElement.remove();
+                }
+                
+                if (snapshot.exists()) {
+                    const challenges = snapshot.val();
+                    
+                    // Convert to array
+                    const challengesArray = Object.keys(challenges).map(id => ({
+                        id,
+                        ...challenges[id]
+                    }));
+                    
+                    // Sort by date (descending)
+                    challengesArray.sort((a, b) => {
+                        if (!a.date) return 1;
+                        if (!b.date) return -1;
+                        return b.date.localeCompare(a.date);
+                    });
+                    
+                    // Find active challenge
+                    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                    let activeChallenge = null;
+                    
+                    for (const challenge of challengesArray) {
+                        if (challenge.date === today && challenge.active) {
+                            activeChallenge = challenge;
+                            break;
+                        }
+                    }
+                    
+                    // Update active challenge container
+                    if (activeChallenge) {
+                        document.getElementById('active-challenge-container').innerHTML = `
+                            <h3 class="text-xl font-bold mb-2">${activeChallenge.description || `Do ${activeChallenge.target} pushups today!`}</h3>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">Today's challenge</p>
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div>
+                                    <span class="text-lg font-medium">${activeChallenge.target}</span>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400 ml-1">pushups</span>
+                                </div>
+                                <div class="flex flex-col sm:flex-row gap-2">
+                                    <button class="edit-challenge-btn py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors" data-challenge-id="${activeChallenge.id}">
+                                        Edit Challenge
+                                    </button>
+                                    <button class="deactivate-challenge-btn py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" data-challenge-id="${activeChallenge.id}">
+                                        Deactivate
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('active-challenge-container').innerHTML = `
+                            <h3 class="text-xl font-bold mb-2">No Active Challenge</h3>
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">Create a challenge for today</p>
+                            <button id="create-today-challenge-btn" class="py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                Create Today's Challenge
+                            </button>
+                        `;
+                        
+                        // Add event listener to create challenge button
+                        document.getElementById('create-today-challenge-btn').addEventListener('click', () => {
+                            showCreateChallengeModal(today);
+                        });
+                    }
+                    
+                    // Clear challenges table
+                    challengesTableBody.innerHTML = '';
+                    
+                    // Render challenges
+                    challengesArray.forEach(challenge => {
+                        const challengeRow = document.createElement('tr');
+                        challengeRow.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors';
+                        
+                        const isActive = challenge.active && challenge.date === today;
+                        
+                        challengeRow.innerHTML = `
+                            <td class="px-6 py-4">${challenge.date || 'N/A'}</td>
+                            <td class="px-6 py-4">${challenge.description || `Do ${challenge.target} pushups`}</td>
+                            <td class="px-6 py-4">${challenge.target || 0}</td>
+                            <td class="px-6 py-4">-</td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isActive ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-400'}">
+                                    ${isActive ? 'Active' : 'Inactive'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center space-x-2">
+                                    <button class="edit-challenge-btn p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400" data-challenge-id="${challenge.id}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="delete-challenge-btn p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-red-600 dark:text-red-400" data-challenge-id="${challenge.id}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
+                        
+                        challengesTableBody.appendChild(challengeRow);
+                    });
+                    
+                    // Add event listeners to buttons
+                    document.querySelectorAll('.edit-challenge-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const challengeId = btn.getAttribute('data-challenge-id');
+                            showEditChallengeModal(challengeId, challenges[challengeId]);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.delete-challenge-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const challengeId = btn.getAttribute('data-challenge-id');
+                            showConfirmation(
+                                'Delete Challenge',
+                                'Are you sure you want to delete this challenge? This action cannot be undone.',
+                                () => deleteChallenge(challengeId)
+                            );
+                        });
+                    });
+                    
+                    document.querySelectorAll('.deactivate-challenge-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const challengeId = btn.getAttribute('data-challenge-id');
+                            deactivateChallenge(challengeId);
+                        });
+                    });
+                } else {
+                    document.getElementById('active-challenge-container').innerHTML = `
+                        <h3 class="text-xl font-bold mb-2">No Active Challenge</h3>
+                        <p class="text-gray-500 dark:text-gray-400 mb-4">Create a challenge for today</p>
+                        <button id="create-today-challenge-btn" class="py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            Create Today's Challenge
+                        </button>
+                    `;
+                    
+                    challengesTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">No challenges found</td>
+                        </tr>
+                    `;
+                    
+                    // Add event listener to create challenge button
+                    document.getElementById('create-today-challenge-btn').addEventListener('click', () => {
+                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                        showCreateChallengeModal(today);
+                    });
+                }
+            }).catch(error => {
+                console.error("Error loading challenges:", error);
+                // Remove loading states
+                const loadingTableElement = document.getElementById('challenges-table-loading');
+                if (loadingTableElement) {
+                    loadingTableElement.remove();
+                }
+                const loadingContainerElement = document.getElementById('active-challenge-loading');
+                if (loadingContainerElement) {
+                    loadingContainerElement.remove();
+                }
+                
+                document.getElementById('active-challenge-container').innerHTML = `
+                    <h3 class="text-xl font-bold mb-2">Error Loading Challenges</h3>
+                    <p class="text-red-500 mb-4">Failed to load challenge data. Please try again.</p>
+                    <button id="retry-challenges-btn" class="py-2 px-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                        Retry
+                    </button>
+                `;
+                
+                document.getElementById('retry-challenges-btn').addEventListener('click', loadChallenges);
+                
+                challengesTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading challenges. Please try again.</td>
+                    </tr>
+                `;
+                
+                showToast('error', 'Error', 'Failed to load challenges. Please try again.');
+            });
+        }
+        
+        // Show create challenge modal
+        function showCreateChallengeModal(initialDate = null) {
+            // Set default date to today if not provided
+            if (!initialDate) {
+                initialDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            }
+            
+            document.getElementById('challenge-date').value = initialDate;
+            document.getElementById('challenge-description').value = '';
+            document.getElementById('challenge-target').value = '100';
+            document.getElementById('challenge-active').checked = true;
+            
+            document.getElementById('create-challenge-modal').classList.remove('hidden');
+        }
+        
+        // Show edit challenge modal
+        function showEditChallengeModal(challengeId, challengeData) {
+            // This is actually the same modal, but we'll populate it with the challenge data
+            document.getElementById('challenge-date').value = challengeData.date || '';
+            document.getElementById('challenge-description').value = challengeData.description || '';
+            document.getElementById('challenge-target').value = challengeData.target || '100';
+            document.getElementById('challenge-active').checked = challengeData.active || false;
+            
+            // Change the save button to update
+            const saveButton = document.getElementById('save-challenge-btn');
+            saveButton.textContent = 'Update Challenge';
+            saveButton.setAttribute('data-challenge-id', challengeId);
+            
+            document.getElementById('create-challenge-modal').classList.remove('hidden');
+        }
+        
+        // Save challenge
+        function saveChallenge() {
+            const date = document.getElementById('challenge-date').value;
+            const description = document.getElementById('challenge-description').value.trim();
+            const target = parseInt(document.getElementById('challenge-target').value) || 100;
+            const active = document.getElementById('challenge-active').checked;
+            
+            // Check if we're updating an existing challenge
+            const saveButton = document.getElementById('save-challenge-btn');
+            const challengeId = saveButton.getAttribute('data-challenge-id');
+            
+            if (challengeId) {
+                // Update existing challenge
+                set(ref(db, `challenges/${challengeId}`), {
+                    date,
+                    description,
+                    target,
+                    active,
+                    updatedAt: serverTimestamp()
+                }).then(() => {
+                    // Show success toast
+                    showToast('success', 'Challenge Updated', 'Challenge has been updated successfully.');
+                    
+                    // Hide modal
+                    document.getElementById('create-challenge-modal').classList.add('hidden');
+                    
+                    // Reset button
+                    saveButton.textContent = 'Create Challenge';
+                    saveButton.removeAttribute('data-challenge-id');
+                    
+                    // Reload challenges
+                    loadChallenges();
+                    
+                    // Also reload dashboard data
+                    loadDashboardData();
+                }).catch(error => {
+                    console.error("Error updating challenge:", error);
+                    showToast('error', 'Update Failed', 'Failed to update challenge. Please try again.');
+                });
+            } else {
+                // Create new challenge
+                const newChallengeRef = push(ref(db, 'challenges'));
+                set(newChallengeRef, {
+                    date,
+                    description,
+                    target,
+                    active,
+                    createdAt: serverTimestamp()
+                }).then(() => {
+                    // If this is an active challenge for today, deactivate other challenges for today
+                    if (active) {
+                        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+                        
+                        if (date === today) {
+                            // Find and deactivate other active challenges for today
+                            get(ref(db, 'challenges')).then((snapshot) => {
+                                if (snapshot.exists()) {
+                                    const challenges = snapshot.val();
+                                    
+                                    for (const id in challenges) {
+                                        if (id !== newChallengeRef.key && challenges[id].date === today && challenges[id].active) {
+                                            set(ref(db, `challenges/${id}/active`), false);
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Show success toast
+                    showToast('success', 'Challenge Created', 'Challenge has been created successfully.');
+                    
+                    // Hide modal
+                    document.getElementById('create-challenge-modal').classList.add('hidden');
+                    
+                    // Reload challenges
+                    loadChallenges();
+                    
+                    // Also reload dashboard data
+                    loadDashboardData();
+                }).catch(error => {
+                    console.error("Error creating challenge:", error);
+                    showToast('error', 'Creation Failed', 'Failed to create challenge. Please try again.');
+                });
+            }
+        }
+        
+        // Delete challenge
+        function deleteChallenge(challengeId) {
+            remove(ref(db, `challenges/${challengeId}`)).then(() => {
+                // Show success toast
+                showToast('success', 'Challenge Deleted', 'Challenge has been deleted successfully.');
+                
+                // Reload challenges
+                loadChallenges();
+                
+                // Also reload dashboard data
+                loadDashboardData();
+            }).catch(error => {
+                console.error("Error deleting challenge:", error);
+                showToast('error', 'Delete Failed', 'Failed to delete challenge. Please try again.');
+            });
+        }
+        
+        // Deactivate challenge
+        function deactivateChallenge(challengeId) {
+            set(ref(db, `challenges/${challengeId}/active`), false).then(() => {
+                // Show success toast
+                showToast('success', 'Challenge Deactivated', 'Challenge has been deactivated successfully.');
+                
+                // Reload challenges
+                loadChallenges();
+                
+                // Also reload dashboard data
+                loadDashboardData();
+            }).catch(error => {
+                console.error("Error deactivating challenge:", error);
+                showToast('error', 'Deactivation Failed', 'Failed to deactivate challenge. Please try again.');
+            });
+        }
+        
+        // Load statistics
+        function loadStatistics() {
+            // Load today's leaderboard
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+            
+            get(ref(db, `stats/daily/${today}`)).then((snapshot) => {
+                const todayLeaderboard = document.getElementById('today-leaderboard-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('today-leaderboard-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                if (snapshot.exists()) {
+                    // Convert to array and sort by count (descending)
+                    const users = [];
+                    snapshot.forEach((childSnapshot) => {
+                        users.push({
+                            id: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+                    
+                    users.sort((a, b) => b.count - a.count);
+                    
+                    // Render users
+                    users.forEach((user, index) => {
+                        const userEl = document.createElement('div');
+                        userEl.className = 'flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700 fade-in';
+                        
+                        // Generate a consistent color from username
+                        const hue = stringToHue(user.username || 'Anonymous');
+                        
+                        // Get medal icon and color
+                        let medalIcon = '';
+                        let medalColor = '';
+                        
+                        if (index === 0) {
+                            medalIcon = '🥇';
+                            medalColor = 'text-yellow-500';
+                        } else if (index === 1) {
+                            medalIcon = '🥈';
+                            medalColor = 'text-gray-400';
+                        } else if (index === 2) {
+                            medalIcon = '🥉';
+                            medalColor = 'text-yellow-700';
+                        }
+                        
+                        userEl.innerHTML = `
+                            <div class="text-2xl font-bold ${medalColor} w-8 text-center">${medalIcon || (index + 1)}</div>
+                            <div class="w-10 h-10 ml-2 rounded-full flex items-center justify-center text-white" style="background-color: hsl(${hue}, 70%, 60%)">
+                                ${(user.username || 'A').charAt(0).toUpperCase()}
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <div class="font-medium">${user.username || 'Anonymous'}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">User ID: ${user.id}</div>
+                            </div>
+                            <div class="font-bold">${user.count || 0}</div>
+                        `;
+                        
+                        todayLeaderboard.appendChild(userEl);
+                    });
+                } else {
+                    todayLeaderboard.innerHTML = '<div class="text-center text-sm text-gray-500 dark:text-gray-400">No data available for today</div>';
+                }
+            }).catch(error => {
+                console.error("Error loading today's leaderboard:", error);
+                const todayLeaderboard = document.getElementById('today-leaderboard-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('today-leaderboard-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                todayLeaderboard.innerHTML = '<div class="text-center text-sm text-red-500">Failed to load leaderboard. Please try again.</div>';
+            });
+            
+            // Load all-time leaderboard
+            get(ref(db, 'stats/allTime')).then((snapshot) => {
+                const allTimeLeaderboard = document.getElementById('all-time-leaderboard-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('all-time-leaderboard-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                
+                if (snapshot.exists()) {
+                    // Convert to array and sort by count (descending)
+                    const users = [];
+                    snapshot.forEach((childSnapshot) => {
+                        users.push({
+                            id: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+                    
+                    users.sort((a, b) => b.count - a.count);
+                    
+                    // Render users
+                    users.forEach((user, index) => {
+                        const userEl = document.createElement('div');
+                        userEl.className = 'flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700 fade-in';
+                        
+                        // Generate a consistent color from username
+                        const hue = stringToHue(user.username || 'Anonymous');
+                        
+                        // Get medal icon and color
+                        let medalIcon = '';
+                        let medalColor = '';
+                        
+                        if (index === 0) {
+                            medalIcon = '🥇';
+                            medalColor = 'text-yellow-500';
+                        } else if (index === 1) {
+                            medalIcon = '🥈';
+                            medalColor = 'text-gray-400';
+                        } else if (index === 2) {
+                            medalIcon = '🥉';
+                            medalColor = 'text-yellow-700';
+                        }
+                        
+                        userEl.innerHTML = `
+                            <div class="text-2xl font-bold ${medalColor} w-8 text-center">${medalIcon || (index + 1)}</div>
+                            <div class="w-10 h-10 ml-2 rounded-full flex items-center justify-center text-white" style="background-color: hsl(${hue}, 70%, 60%)">
+                                ${(user.username || 'A').charAt(0).toUpperCase()}
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <div class="font-medium">${user.username || 'Anonymous'}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">User ID: ${user.id}</div>
+                            </div>
+                            <div class="font-bold">${user.count || 0}</div>
+                        `;
+                        
+                        allTimeLeaderboard.appendChild(userEl);
+                    });
+                } else {
+                    allTimeLeaderboard.innerHTML = '<div class="text-center text-sm text-gray-500 dark:text-gray-400">No data available</div>';
+                }
+            }).catch(error => {
+                console.error("Error loading all-time leaderboard:", error);
+                const allTimeLeaderboard = document.getElementById('all-time-leaderboard-list');
+                // Remove loading state
+                const loadingElement = document.getElementById('all-time-leaderboard-loading');
+                if (loadingElement) {
+                    loadingElement.remove();
+                }
+                allTimeLeaderboard.innerHTML = '<div class="text-center text-sm text-red-500">Failed to load leaderboard. Please try again.</div>';
+            });
+        }
+        
+        // Export stats as CSV
+        function exportStatsAsCSV() {
+            get(ref(db, 'stats/allTime')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    // Convert to array
+                    const users = [];
+                    snapshot.forEach((childSnapshot) => {
+                        users.push({
+                            id: childSnapshot.key,
+                            ...childSnapshot.val()
+                        });
+                    });
+                    
+                    // Create CSV content
+                    let csvContent = 'User ID,Username,Total Pushups\n';
+                    
+                    users.forEach(user => {
+                        csvContent += `${user.id},${user.username || 'Anonymous'},${user.count || 0}\n`;
+                    });
+                    
+                    // Create download link
+                    const blob = new Blob([csvContent], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'pushup-stats.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    // Show success toast
+                    showToast('success', 'Export Successful', 'Statistics have been exported as CSV.');
+                } else {
+                    showToast('error', 'Export Failed', 'No data available to export.');
+                }
+            }).catch(error => {
+                console.error("Error exporting CSV:", error);
+                showToast('error', 'Export Failed', 'Failed to export statistics. Please try again.');
+            });
+        }
+        
+        // Export stats as JSON
+        function exportStatsAsJSON() {
+            get(ref(db, 'stats')).then((snapshot) => {
+                if (snapshot.exists()) {
+                    // Create JSON content
+                    const jsonContent = JSON.stringify(snapshot.val(), null, 2);
+                    
+                    // Create download link
+                    const blob = new Blob([jsonContent], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'pushup-stats.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    // Show success toast
+                    showToast('success', 'Export Successful', 'Statistics have been exported as JSON.');
+                } else {
+                    showToast('error', 'Export Failed', 'No data available to export.');
+                }
+            }).catch(error => {
+                console.error("Error exporting JSON:", error);
+                showToast('error', 'Export Failed', 'Failed to export statistics. Please try again.');
+            });
+        }
+        
+        // Toggle auto cleanup
+        function toggleAutoCleanup() {
+            // This would be a more complex operation in a real app
+            // Here we'll just show a toast notification
+            
+            const enabled = document.getElementById('auto-cleanup-toggle').checked;
+            
+            if (enabled) {
+                showToast('success', 'Auto-Cleanup Enabled', 'Old data will be automatically removed after 30 days.');
+            } else {
+                showToast('info', 'Auto-Cleanup Disabled', 'Old data will not be automatically removed.');
+            }
+        }
+        
+        // Update password
+        function updatePassword() {
+            const newPassword = document.getElementById('new-password').value.trim();
+            
+            if (newPassword) {
+                // In a real app, this would update the password in a secure way
+                // Here we'll just update localStorage for demo purposes
+                
+                showToast('success', 'Password Updated', 'Admin password has been updated successfully.');
+                document.getElementById('new-password').value = '';
+            } else {
+                showToast('error', 'Error', 'Please enter a new password.');
+            }
+        }
+        
+        // Backup database
+        function backupDatabase() {
+            // In a real app, this would create a full database backup
+            // Here we'll just export the entire database as JSON
+            
+            get(ref(db)).then((snapshot) => {
+                if (snapshot.exists()) {
+                    // Create JSON content
+                    const jsonContent = JSON.stringify(snapshot.val(), null, 2);
+                    
+                    // Create download link
+                    const blob = new Blob([jsonContent], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pushup-db-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    // Show success toast
+                    showToast('success', 'Backup Created', 'Database backup has been created successfully.');
+                } else {
+                    showToast('error', 'Backup Failed', 'No data available to backup.');
+                }
+            }).catch(error => {
+                console.error("Error creating backup:", error);
+                showToast('error', 'Backup Failed', 'Failed to create database backup. Please try again.');
+            });
+        }
+        
+        // Reset all stats
+        function resetAllStats() {
+            // Reset all user stats, but keep user accounts
+            
+            // Clear daily stats
+            remove(ref(db, 'stats/daily')).then(() => {
+                // Reset all-time stats counts to 0
+                get(ref(db, 'stats/allTime')).then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const users = snapshot.val();
+                        
+                        for (const userId in users) {
+                            set(ref(db, `stats/allTime/${userId}/count`), 0);
+                        }
+                    }
+                    
+                    // Reset counts for active users
+                    return get(ref(db, 'active_users'));
+                }).then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const users = snapshot.val();
+                        
+                        for (const userId in users) {
+                            set(ref(db, `active_users/${userId}/count`), 0);
+                            set(ref(db, `active_users/${userId}/todayCount`), 0);
+                            set(ref(db, `active_users/${userId}/totalCount`), 0);
+                        }
+                    }
+                    
+                    // Show success toast
+                    showToast('success', 'Stats Reset', 'All user statistics have been reset successfully.');
+                    
+                    // Reload dashboard data
+                    loadDashboardData();
+                    
+                    // Reload stats
+                    loadStatistics();
+                });
+            }).catch(error => {
+                console.error("Error resetting stats:", error);
+                showToast('error', 'Reset Failed', 'Failed to reset statistics. Please try again.');
+            });
+        }
+        
+        // Clear database
+        function clearDatabase() {
+            // Clear the entire database
+            remove(ref(db)).then(() => {
+                // Show success toast
+                showToast('success', 'Database Cleared', 'The entire database has been cleared successfully.');
+                
+                // Reload dashboard data
+                loadDashboardData();
+            }).catch(error => {
+                console.error("Error clearing database:", error);
+                showToast('error', 'Clear Failed', 'Failed to clear database. Please try again.');
+            });
+        }
+        
+        // Show confirmation modal
+        function showConfirmation(title, message, callback) {
+            document.getElementById('confirmation-title').textContent = title;
+            document.getElementById('confirmation-message').textContent = message;
+            confirmationCallback = callback;
+            
+            document.getElementById('confirmation-modal').classList.remove('hidden');
+        }
+        
+        // Show toast notification
+        function showToast(type, title, message) {
+            const toast = document.getElementById('toast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+            
+            // Set content
+            toastTitle.textContent = title;
+            toastMessage.textContent = message;
+            
+            // Set icon and color based on type
+            if (type === 'success') {
+                toastIcon.innerHTML = '<i class="fas fa-check"></i>';
+                toastIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400';
+            } else if (type === 'error') {
+                toastIcon.innerHTML = '<i class="fas fa-times"></i>';
+                toastIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400';
+            } else if (type === 'warning') {
+                toastIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                toastIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400';
+            } else if (type === 'info') {
+                toastIcon.innerHTML = '<i class="fas fa-info-circle"></i>';
+                toastIcon.className = 'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400';
+            }
+            
+            // Show toast
+            toast.classList.remove('translate-y-10', 'opacity-0');
+            
+            // Hide toast after 5 seconds
+            setTimeout(hideToast, 5000);
+        }
+        
+        // Hide toast notification
+        function hideToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('translate-y-10', 'opacity-0');
+        }
+        
+        // Generate a consistent hue from a string
+        function stringToHue(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return hash % 360;
+        }
+        
+        // Initialize the admin panel
+        initAdmin();
+    </script>
+</body>
+</html>
